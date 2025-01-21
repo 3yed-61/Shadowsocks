@@ -1,0 +1,56 @@
+name: Shadowsocks Config Cleaner
+
+on:
+  schedule:
+    - cron: '0 */8 * * *'
+  workflow_dispatch:
+
+jobs:
+  update-configs:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+    
+    - name: Set up Python
+      uses: actions/setup-python@v3
+      with:
+        python-version: '3.11'
+    
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install requests dnspython
+    
+    - name: Run Config Cleaner
+      run: python config-cleaner.py
+    
+    - name: Check if Export/clean-configs.json exists
+      run: |
+        if [ ! -f Export/clean-configs.json ]; then
+          echo "Export/clean-configs.json was not created!"
+          exit 1
+        fi
+    
+    - name: Display clean-configs.json
+      run: cat Export/clean-configs.json
+    
+    - name: List files
+      run: ls -l Export
+    
+    - name: Commit and push if changes
+      run: |
+        git config --local user.email "github-actions[bot]@users.noreply.github.com"
+        git config --local user.name "github-actions[bot]"
+        git add Export/clean-configs.json
+        git status
+        if git diff --staged --quiet; then
+          echo "No changes detected in Export/clean-configs.json"
+        else
+          git commit -m "Update configs"
+          git pull --rebase origin main
+          git push
+        fi
